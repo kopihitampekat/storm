@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storm Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            storm: { 50: '#eef6ff', 100: '#d9eaff', 200: '#bcdbff', 300: '#8ec5ff', 400: '#59a4ff', 500: '#3381ff', 600: '#1b5ff5', 700: '#144ae1', 800: '#173cb6', 900: '#19378f', 950: '#0f1f4d' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #1e293b; } ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen" x-data="dashboard()" x-init="init()">
+
+  <!-- Top Bar -->
+  <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14">
+        <div class="flex items-center gap-3">
+          <span class="text-xl font-bold text-storm-400">⚡</span>
+          <span class="text-lg font-semibold text-white">Storm</span>
+          <span class="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">v0.1.0</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2 text-sm">
+            <span class="text-slate-500">Provider:</span>
+            <span class="text-storm-400 font-medium" x-text="status.config?.provider ?? 'N/A'"></span>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <span class="text-slate-500">Account:</span>
+            <select class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-sm text-slate-300 focus:outline-none focus:border-storm-500"
+                    x-model="activeAccount" @change="switchAccount()">
+              <template x-for="acc in accounts" :key="acc">
+                <option :value="acc" x-text="acc"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Tab Navigation -->
+    <div class="flex gap-1 mb-6 bg-slate-900 rounded-lg p-1 w-fit">
+      <template x-for="tab in ['overview', 'workers', 'scan', 'modules', 'results']" :key="tab">
+        <button @click="currentTab = tab"
+                :class="currentTab === tab ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-slate-300'"
+                class="px-4 py-2 rounded-md text-sm font-medium transition-all capitalize"
+                x-text="tab">
+        </button>
+      </template>
+    </div>
+
+    <!-- Overview Tab -->
+    <div x-show="currentTab === 'overview'" x-cloak class="fade-in">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div class="text-slate-500 text-sm mb-1">Workers</div>
+          <div class="text-3xl font-bold text-white" x-text="workers.length">0</div>
+          <div class="text-xs text-green-400 mt-1"><span x-text="workers.filter(w => w.status === 'active').length"></span> active</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div class="text-slate-500 text-sm mb-1">Modules</div>
+          <div class="text-3xl font-bold text-white" x-text="modules.length">0</div>
+          <div class="text-xs text-slate-400 mt-1">scan types available</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div class="text-slate-500 text-sm mb-1">Accounts</div>
+          <div class="text-3xl font-bold text-white" x-text="accounts.length">0</div>
+          <div class="text-xs text-slate-400 mt-1">configured</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div class="text-slate-500 text-sm mb-1">Scans</div>
+          <div class="text-3xl font-bold text-white" x-text="scanHistory.length">0</div>
+          <div class="text-xs text-slate-400 mt-1">completed this session</div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Workers</h3>
+          <div x-show="workers.length === 0" class="text-slate-600 text-sm py-4">No workers deployed</div>
+          <div class="space-y-2 max-h-64 overflow-y-auto">
+            <template x-for="w in workers.slice(0, 10)" :key="w.name">
+              <div class="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full pulse-dot" :class="w.status === 'active' ? 'bg-green-400' : 'bg-red-400'"></span>
+                  <span class="text-sm text-white font-mono" x-text="w.name"></span>
+                </div>
+                <span class="text-xs text-slate-500" x-text="w.provider"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Scan History</h3>
+          <div x-show="scanHistory.length === 0" class="text-slate-600 text-sm py-4">No scans run yet</div>
+          <div class="space-y-2 max-h-64 overflow-y-auto">
+            <template x-for="(s, i) in scanHistory" :key="i">
+              <div class="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
+                <div>
+                  <span class="text-sm text-white" x-text="s.module"></span>
+                  <span class="text-xs text-slate-500 ml-2" x-text="s.totalTargets + ' targets'"></span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-xs text-green-400" x-text="s.totalResults + ' results'"></span>
+                  <span class="text-xs text-slate-500" x-text="(s.durationMs / 1000).toFixed(1) + 's'"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workers Tab -->
+    <div x-show="currentTab === 'workers'" x-cloak class="fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-white">Deployed Workers</h2>
+        <div class="flex gap-2">
+          <button @click="refreshWorkers()" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition">
+            Refresh
+          </button>
+          <button @click="showDeployModal = true" class="px-3 py-1.5 bg-storm-600 text-white rounded-lg text-sm hover:bg-storm-500 transition">
+            Deploy Fleet
+          </button>
+        </div>
+      </div>
+
+      <!-- Workers Table -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div x-show="workers.length === 0" class="text-center py-12 text-slate-600">
+          <p class="text-lg mb-2">No workers deployed</p>
+          <p class="text-sm">Click "Deploy Fleet" to get started</p>
+        </div>
+        <table x-show="workers.length > 0" class="w-full">
+          <thead class="bg-slate-800/50 text-left">
+            <tr>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">
+                <input type="checkbox" @change="toggleSelectAll($event)" class="rounded bg-slate-700 border-slate-600">
+              </th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Name</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Provider</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">URL</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Status</th>
+              <th class="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            <template x-for="w in workers" :key="w.name">
+              <tr class="hover:bg-slate-800/30 transition">
+                <td class="px-4 py-3">
+                  <input type="checkbox" :value="w.name" x-model="selectedWorkers" class="rounded bg-slate-700 border-slate-600">
+                </td>
+                <td class="px-4 py-3 font-mono text-sm text-white" x-text="w.name"></td>
+                <td class="px-4 py-3 text-sm text-slate-400" x-text="w.provider"></td>
+                <td class="px-4 py-3 text-sm">
+                  <a :href="w.url" target="_blank" class="text-storm-400 hover:text-storm-300 truncate block max-w-xs" x-text="w.url"></a>
+                </td>
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
+                        :class="w.status === 'active' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'">
+                    <span class="w-1.5 h-1.5 rounded-full" :class="w.status === 'active' ? 'bg-green-400' : 'bg-red-400'"></span>
+                    <span x-text="w.status"></span>
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <button @click="checkHealth(w.name)" class="text-xs text-slate-400 hover:text-white transition mr-2">Health</button>
+                  <button @click="removeWorker(w.name)" class="text-xs text-red-400 hover:text-red-300 transition">Remove</button>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bulk Actions -->
+      <div x-show="selectedWorkers.length > 0" class="mt-4 flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl p-3">
+        <span class="text-sm text-slate-400" x-text="selectedWorkers.length + ' selected'"></span>
+        <button @click="removeSelected()" class="px-3 py-1.5 bg-red-600/20 text-red-400 rounded-lg text-sm hover:bg-red-600/30 transition">
+          Remove Selected
+        </button>
+      </div>
+
+      <!-- Deploy Modal -->
+      <div x-show="showDeployModal" x-cloak class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showDeployModal = false">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl fade-in">
+          <h3 class="text-lg font-semibold text-white mb-4">Deploy Fleet</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Prefix</label>
+              <input type="text" x-model="deployForm.prefix" placeholder="storm" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-storm-500">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Count</label>
+              <input type="number" x-model.number="deployForm.count" min="1" max="50" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-storm-500">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Region (optional)</label>
+              <input type="text" x-model="deployForm.region" placeholder="auto" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-storm-500">
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-6">
+            <button @click="showDeployModal = false" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition">Cancel</button>
+            <button @click="deployFleet()" :disabled="deploying" class="px-4 py-2 bg-storm-600 text-white rounded-lg text-sm hover:bg-storm-500 transition disabled:opacity-50">
+              <span x-show="!deploying">Deploy</span>
+              <span x-show="deploying">Deploying...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan Tab -->
+    <div x-show="currentTab === 'scan'" x-cloak class="fade-in">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Scan Form -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="text-lg font-semibold text-white mb-4">New Scan</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Targets (one per line)</label>
+              <textarea x-model="scanForm.targets" rows="6" placeholder="example.com&#10;hackthebox.com&#10;bugcrowd.com"
+                        class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-storm-500 resize-y"></textarea>
+              <div class="text-xs text-slate-500 mt-1"><span x-text="scanForm.targets.split('\\n').filter(l => l.trim()).length"></span> targets</div>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Module</label>
+              <select x-model="scanForm.module" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-storm-500">
+                <template x-for="m in modules" :key="m.name">
+                  <option :value="m.name" x-text="m.name + ' — ' + m.description"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Fleet Prefix (optional)</label>
+              <input type="text" x-model="scanForm.fleetPrefix" placeholder="storm" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-storm-500">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-400 mb-1">Max Instances (optional)</label>
+              <input type="number" x-model.number="scanForm.instances" min="1" placeholder="all" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-storm-500">
+            </div>
+
+            <button @click="runScan()" :disabled="scanning || !scanForm.targets.trim() || !scanForm.module"
+                    class="w-full py-2.5 bg-storm-600 text-white rounded-lg text-sm font-medium hover:bg-storm-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              <span x-show="!scanning">Launch Scan</span>
+              <span x-show="scanning" class="flex items-center justify-center gap-2">
+                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                Scanning...
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scan Output -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-white">Scan Output</h3>
+            <button x-show="lastScanResults" @click="copyResults()" class="text-xs text-slate-400 hover:text-white transition">Copy</button>
+          </div>
+
+          <div x-show="!lastScanResults && !scanning" class="text-center py-12 text-slate-600">
+            <p class="text-sm">Run a scan to see results here</p>
+          </div>
+
+          <!-- Stats -->
+          <div x-show="lastScanStats" class="grid grid-cols-2 gap-2 mb-4">
+            <div class="bg-slate-800/50 rounded-lg p-3">
+              <div class="text-xs text-slate-500">Targets</div>
+              <div class="text-lg font-bold text-white" x-text="lastScanStats?.totalTargets ?? 0"></div>
+            </div>
+            <div class="bg-slate-800/50 rounded-lg p-3">
+              <div class="text-xs text-slate-500">Results</div>
+              <div class="text-lg font-bold text-green-400" x-text="lastScanStats?.totalResults ?? 0"></div>
+            </div>
+            <div class="bg-slate-800/50 rounded-lg p-3">
+              <div class="text-xs text-slate-500">Errors</div>
+              <div class="text-lg font-bold text-red-400" x-text="lastScanStats?.totalErrors ?? 0"></div>
+            </div>
+            <div class="bg-slate-800/50 rounded-lg p-3">
+              <div class="text-xs text-slate-500">Duration</div>
+              <div class="text-lg font-bold text-white" x-text="((lastScanStats?.durationMs ?? 0) / 1000).toFixed(1) + 's'"></div>
+            </div>
+          </div>
+
+          <!-- Results -->
+          <div x-show="lastScanResults" class="bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
+            <pre class="p-4 text-xs text-slate-300 font-mono overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap" x-text="lastScanResults"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modules Tab -->
+    <div x-show="currentTab === 'modules'" x-cloak class="fade-in">
+      <h2 class="text-lg font-semibold text-white mb-4">Scan Modules</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <template x-for="m in modules" :key="m.name">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-white font-semibold" x-text="m.name"></h3>
+              <span class="text-xs bg-storm-600/20 text-storm-400 px-2 py-0.5 rounded-full" x-text="m.output.format"></span>
+            </div>
+            <p class="text-sm text-slate-400 mb-4" x-text="m.description"></p>
+            <div class="space-y-1 text-xs text-slate-500">
+              <div class="flex justify-between">
+                <span>Scanner</span>
+                <span class="text-slate-400 font-mono" x-text="m.scanner"></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Timeout</span>
+                <span class="text-slate-400" x-text="(m.options.timeout ?? 5000) + 'ms'"></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Targets/Worker</span>
+                <span class="text-slate-400" x-text="m.concurrency?.targetsPerWorker ?? 100"></span>
+              </div>
+              <div class="flex justify-between">
+                <span>Concurrency</span>
+                <span class="text-slate-400" x-text="m.concurrency?.maxConcurrentPerWorker ?? 10"></span>
+              </div>
+            </div>
+            <button @click="scanForm.module = m.name; currentTab = 'scan'"
+                    class="mt-4 w-full py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700 transition">
+              Use Module
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Results Tab -->
+    <div x-show="currentTab === 'results'" x-cloak class="fade-in">
+      <h2 class="text-lg font-semibold text-white mb-4">Scan History</h2>
+
+      <div x-show="scanHistory.length === 0" class="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
+        <p class="text-slate-600">No scans completed yet this session</p>
+      </div>
+
+      <div class="space-y-4">
+        <template x-for="(scan, idx) in scanHistory" :key="idx">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 bg-slate-800/30 cursor-pointer" @click="scan._expanded = !scan._expanded">
+              <div class="flex items-center gap-4">
+                <span class="text-sm font-semibold text-white" x-text="'#' + (scanHistory.length - idx)"></span>
+                <span class="text-sm text-storm-400 font-mono" x-text="scan.module"></span>
+                <span class="text-xs text-slate-500" x-text="scan.totalTargets + ' targets'"></span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-xs text-green-400" x-text="scan.totalResults + ' results'"></span>
+                <span x-show="scan.totalErrors > 0" class="text-xs text-red-400" x-text="scan.totalErrors + ' errors'"></span>
+                <span class="text-xs text-slate-500" x-text="(scan.durationMs / 1000).toFixed(1) + 's'"></span>
+                <svg :class="scan._expanded ? 'rotate-180' : ''" class="w-4 h-4 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+            </div>
+            <div x-show="scan._expanded" class="border-t border-slate-800">
+              <pre class="p-4 text-xs text-slate-300 font-mono overflow-x-auto max-h-80 overflow-y-auto whitespace-pre-wrap" x-text="scan.results"></pre>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="fixed bottom-4 right-4 z-50 space-y-2">
+    <template x-for="(toast, i) in toasts" :key="i">
+      <div class="px-4 py-3 rounded-lg shadow-lg text-sm font-medium fade-in max-w-sm"
+           :class="toast.type === 'error' ? 'bg-red-600 text-white' : toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-200'"
+           x-text="toast.message"
+           x-init="setTimeout(() => toasts.splice(i, 1), 4000)">
+      </div>
+    </template>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

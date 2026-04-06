@@ -8,6 +8,7 @@ import { execCommand } from "./commands/exec.js";
 import { logsCommand } from "./commands/logs.js";
 import { accountCommand } from "./commands/account.js";
 import { modulesCommand } from "./commands/modules.js";
+import { dashboardCommand } from "./commands/dashboard.js";
 
 export function createProgram(): Command {
   const program = new Command();
@@ -26,6 +27,7 @@ export function createProgram(): Command {
   program.addCommand(logsCommand());
   program.addCommand(accountCommand());
   program.addCommand(modulesCommand());
+  program.addCommand(dashboardCommand());
 
   return program;
 }

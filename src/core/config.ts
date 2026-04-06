@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import type { StormConfig, AccountConfig } from "./types.js";
@@ -77,7 +77,6 @@ export function saveAccount(name: string, account: AccountConfig): void {
 export function listAccounts(): string[] {
   ensureStormDirs();
   if (!existsSync(ACCOUNTS_DIR)) return [];
-  const { readdirSync } = require("fs");
   return readdirSync(ACCOUNTS_DIR)
     .filter((f: string) => f.endsWith(".json"))
     .map((f: string) => f.replace(".json", ""));
