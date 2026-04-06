@@ -1,0 +1,6 @@
+{
+  "provider": "fly",
+  "api_token": "<your-fly-api-token>",
+  "org": "<your-org-optional>",
+  "region": "iad"
+}

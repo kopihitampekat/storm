@@ -1,0 +1,17 @@
+{
+  "name": "header-audit",
+  "description": "Audit HTTP security headers and generate security score",
+  "scanner": "header-audit",
+  "options": {
+    "timeout": 5000,
+    "userAgent": "Mozilla/5.0 (compatible; Storm/1.0)"
+  },
+  "output": {
+    "format": "jsonl",
+    "fields": ["target", "url", "statusCode", "grade", "score", "passed", "failed", "findings"]
+  },
+  "concurrency": {
+    "targetsPerWorker": 100,
+    "maxConcurrentPerWorker": 15
+  }
+}

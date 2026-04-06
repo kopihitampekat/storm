@@ -1,0 +1,4 @@
+{
+  "provider": "firebase",
+  "project_id": "<your-firebase-project-id>"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "tech-detect",
+  "description": "Detect web technologies, frameworks, and server software",
+  "scanner": "tech-detect",
+  "options": {
+    "timeout": 5000,
+    "userAgent": "Mozilla/5.0 (compatible; Storm/1.0)"
+  },
+  "output": {
+    "format": "jsonl",
+    "fields": ["target", "url", "statusCode", "technologies", "techCount", "server"]
+  },
+  "concurrency": {
+    "targetsPerWorker": 50,
+    "maxConcurrentPerWorker": 10
+  }
+}

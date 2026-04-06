@@ -1,0 +1,5 @@
+{
+  "provider": "heroku",
+  "api_key": "<your-heroku-api-key>",
+  "team": "<your-team-optional>"
+}

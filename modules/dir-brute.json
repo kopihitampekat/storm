@@ -1,0 +1,18 @@
+{
+  "name": "dir-brute",
+  "description": "Brute-force common directories and files on web servers",
+  "scanner": "dir-brute",
+  "options": {
+    "timeout": 5000,
+    "userAgent": "Mozilla/5.0 (compatible; Storm/1.0)",
+    "statusCodes": [200, 201, 202, 204, 301, 302, 307, 308, 401, 403]
+  },
+  "output": {
+    "format": "jsonl",
+    "fields": ["target", "url", "found", "totalChecked", "totalFound"]
+  },
+  "concurrency": {
+    "targetsPerWorker": 20,
+    "maxConcurrentPerWorker": 5
+  }
+}

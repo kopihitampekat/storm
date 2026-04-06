@@ -1,0 +1,19 @@
+{
+  "name": "dns-resolve",
+  "description": "Resolve subdomains via DNS-over-HTTPS (Cloudflare/Google)",
+  "scanner": "dns-resolve",
+  "options": {
+    "resolver": "https://cloudflare-dns.com/dns-query",
+    "recordTypes": ["A", "AAAA", "CNAME"],
+    "timeout": 3000,
+    "retries": 2
+  },
+  "output": {
+    "format": "jsonl",
+    "fields": ["target", "domain", "resolved", "ips", "cnames", "records"]
+  },
+  "concurrency": {
+    "targetsPerWorker": 200,
+    "maxConcurrentPerWorker": 20
+  }
+}

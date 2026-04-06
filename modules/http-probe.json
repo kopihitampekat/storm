@@ -1,0 +1,20 @@
+{
+  "name": "http-probe",
+  "description": "Probe HTTP endpoints for status codes, titles, and response details",
+  "scanner": "http-probe",
+  "options": {
+    "timeout": 5000,
+    "followRedirects": true,
+    "maxRedirects": 5,
+    "method": "GET",
+    "userAgent": "Mozilla/5.0 (compatible; Storm/1.0)"
+  },
+  "output": {
+    "format": "jsonl",
+    "fields": ["target", "url", "statusCode", "title", "contentLength", "server", "duration", "redirected"]
+  },
+  "concurrency": {
+    "targetsPerWorker": 100,
+    "maxConcurrentPerWorker": 10
+  }
+}

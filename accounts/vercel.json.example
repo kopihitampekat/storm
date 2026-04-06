@@ -1,0 +1,6 @@
+{
+  "provider": "vercel",
+  "token": "<your-vercel-token>",
+  "team_id": "<your-team-id-optional>",
+  "project_prefix": "storm"
+}
